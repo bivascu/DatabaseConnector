@@ -1,14 +1,18 @@
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 
 import java.beans.PropertyVetoException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 
 public class DatabaseConnectorImpl implements DatabaseConnector{
 
-    ComboPooledDataSource cpds;
+    private ComboPooledDataSource cpds;
 
     private DatabaseConnectorImpl(Builder builderArg){
         cpds = builderArg.getBuilderCpds();
@@ -38,13 +42,17 @@ public class DatabaseConnectorImpl implements DatabaseConnector{
         private int maxPoolSize = 20;
         private int maxStatements = 100;
         private int checkoutTimeout=3000;
+        private Path jdbcPropertiesFile;
 
-        public ComboPooledDataSource getBuilderCpds() {
-            return builderCpds;
+        public void setJdbcPropertiesFile(Path jdbcPropertiesFile) {
+            Objects.requireNonNull(jdbcPropertiesFile,"jdbcPropertiesFile cannot be null");
+            if(Files.notExists(jdbcPropertiesFile))
+                throw new IllegalArgumentException("jdbcPropertiesFile cannot be found");
+            this.jdbcPropertiesFile = jdbcPropertiesFile;
         }
 
-        public void setBuilderCpds(ComboPooledDataSource builderCpds) {
-            this.builderCpds = builderCpds;
+        private ComboPooledDataSource getBuilderCpds() {
+            return builderCpds;
         }
 
         public Builder setJdbcUrl(String jdbcUrl) {
@@ -72,30 +80,48 @@ public class DatabaseConnectorImpl implements DatabaseConnector{
         }
 
         public Builder setMinPoolSize(int minPoolSize) {
-            if(!Objects.nonNull(minPoolSize))
+            if(minPoolSize > 0)
                 this.minPoolSize = minPoolSize;
             return this;
         }
 
         public Builder setAquireIncrement(int aquireIncrement) {
-            if(Objects.nonNull(aquireIncrement))
+            if(aquireIncrement > 0)
                 this.aquireIncrement = aquireIncrement;
             return this;
         }
 
         public Builder setMaxPoolSize(int maxPoolSize) {
-            if(Objects.nonNull(maxPoolSize))
+            if(maxPoolSize > 0)
                 this.maxPoolSize = maxPoolSize;
             return this;
         }
 
         public Builder setMaxStatements(int maxStatements) {
-            if(Objects.nonNull(maxStatements))
+            if(maxStatements > 0)
                 this.maxStatements = maxStatements;
             return this;
         }
 
         public DatabaseConnectorImpl buildOracleDataSource() {
+
+            if(Objects.nonNull(jdbcPropertiesFile)){
+                Properties appProps = new Properties();
+                try {
+                    appProps.load(Files.newBufferedReader(jdbcPropertiesFile));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                if(appProps.isEmpty()){
+                    throw new IllegalArgumentException("jdbcPropertiesFile is empty");
+                }
+                this.setUsername(appProps.getProperty("username", this.username));
+                this.setPassword(appProps.getProperty("password", this.password));
+                this.setDatabaseName(appProps.getProperty("databaseName", this.databaseName));
+                this.setJdbcUrl(appProps.getProperty("jdbcUrl", this.jdbcUrl));
+            }
+
+
             Objects.requireNonNull(jdbcUrl, "jdbcUrl cannot be null");
             Objects.requireNonNull(username, "username cannot be null");
             Objects.requireNonNull(password, "password cannot be null");
