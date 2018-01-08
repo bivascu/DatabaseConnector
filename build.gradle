@@ -1,0 +1,52 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+
+
+group 'com.damane'
+version '1.0-SNAPSHOT'
+
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId 'com.damane'
+            artifactId 'database_connector'
+        }
+    }
+
+    repositories {
+        maven {
+            url "s3://maven-jar-repository/${project.version.endsWith('-SNAPSHOT') ? 'snapshot' : 'release'}"
+            credentials(AwsCredentials) {
+                accessKey AWS_ACCESS_KEY
+                secretKey AWS_SECRET_KEY
+            }
+        }
+    }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'com.mchange', name: 'c3p0', version: '0.9.5.2'
+}
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes ("Main-Class": "DatabaseConnectorImpl")
+    }
+    baseName= jar.getBaseName() + "_fat"
+    from {
+        (configurations.compile).collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    with jar
+}

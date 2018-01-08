@@ -44,11 +44,12 @@ public class DatabaseConnectorImpl implements DatabaseConnector{
         private int checkoutTimeout=3000;
         private Path jdbcPropertiesFile;
 
-        public void setJdbcPropertiesFile(Path jdbcPropertiesFile) {
+        public Builder setJdbcPropertiesFile(Path jdbcPropertiesFile) {
             Objects.requireNonNull(jdbcPropertiesFile,"jdbcPropertiesFile cannot be null");
             if(Files.notExists(jdbcPropertiesFile))
                 throw new IllegalArgumentException("jdbcPropertiesFile cannot be found");
             this.jdbcPropertiesFile = jdbcPropertiesFile;
+            return this;
         }
 
         private ComboPooledDataSource getBuilderCpds() {
